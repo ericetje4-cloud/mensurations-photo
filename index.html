@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1216">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Mensurations Photo</title>
+<style>
+  :root{
+    --bg:#0f1216; --card:#181d24; --card2:#1f2630; --line:#2a3340;
+    --txt:#e8edf4; --muted:#93a1b3; --accent:#4cc2ff; --green:#35d07f;
+    --warn:#ffb454; --danger:#ff6b6b; --radius:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100dvh; padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:16px 16px 40px}
+  h1{font-size:26px;margin:8px 0 4px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:0 0 6px}
+  p{line-height:1.55}
+  .muted{color:var(--muted);font-size:14px;line-height:1.5}
+  .screen{display:none;animation:fade .25s ease}
+  .screen.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .topbar .back{
+    width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+    background:var(--card);color:var(--txt);font-size:18px;cursor:pointer;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .topbar .steps{display:flex;gap:6px;margin-left:auto}
+  .topbar .steps span{width:22px;height:5px;border-radius:3px;background:var(--line)}
+  .topbar .steps span.on{background:var(--accent)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+  .card h2{margin-bottom:10px}
+
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    padding:15px 18px;border-radius:14px;border:none;font-size:16px;font-weight:600;
+    cursor:pointer;margin-top:10px;
+  }
+  .btn.primary{background:var(--accent);color:#06222f}
+  .btn.green{background:var(--green);color:#062b18}
+  .btn.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+  .btn.small{width:auto;padding:9px 14px;font-size:14px;margin-top:0;border-radius:11px}
+  .btn:disabled{opacity:.45;cursor:default}
+  .row{display:flex;gap:10px}
+  .row .btn{margin-top:10px}
+
+  label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
+  input[type=text],input[type=number],select{
+    width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+    background:var(--card2);color:var(--txt);font-size:16px;
+  }
+  input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent}
+
+  .note{border-left:3px solid var(--warn);background:rgba(255,180,84,.08);padding:12px 14px;border-radius:0 12px 12px 0;font-size:13.5px;line-height:1.5;color:#ffd9a3;margin:12px 0}
+  .note.blue{border-color:var(--accent);background:rgba(76,194,255,.07);color:#bde4ff}
+  .note.green{border-color:var(--green);background:rgba(53,208,127,.07);color:#b8ecd1}
+
+  /* Écran photo */
+  .stage{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;border:1px solid var(--line)}
+  .stage video{display:block;width:100%;height:auto}
+  .stage canvas.overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .stage .mirror video,.stage.mirror video{transform:scaleX(-1)}
+  .stage.mirror canvas.overlay{transform:scaleX(-1)}
+  .guide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .guide svg{height:86%;opacity:.4}
+  .status{
+    position:absolute;left:10px;right:10px;bottom:10px;text-align:center;
+    background:rgba(10,12,16,.72);backdrop-filter:blur(6px);border-radius:12px;
+    padding:8px 12px;font-size:13.5px;color:#dbe6f2;pointer-events:none;
+  }
+  .status.ok{color:#b8ecd1}
+  .status.bad{color:#ffc9c9}
+  .spinner{
+    width:22px;height:22px;border-radius:50%;border:3px solid var(--line);
+    border-top-color:var(--accent);animation:spin 1s linear infinite;display:inline-block;vertical-align:-5px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Résultats */
+  .thumbbox{border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);margin-bottom:14px;background:#000}
+  .thumbbox canvas{display:block;width:100%;height:auto}
+  .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+  .who b{font-size:17px}
+  .meas-table{width:100%;border-collapse:collapse;font-size:15.5px}
+  .meas-table td{padding:11px 2px;border-bottom:1px dashed var(--line)}
+  .meas-table td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .meas-table tr.est td{color:var(--muted)}
+  .meas-table tr.est td:last-child{color:var(--txt);font-weight:500}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px;vertical-align:2px;margin-left:6px}
+  .badge.est{background:rgba(255,180,84,.15);color:var(--warn)}
+  .sectitle{margin:18px 0 4px;font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+
+  .histo-item{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+  .histo-item img{width:44px;height:44px;object-fit:cover;border-radius:10px;background:#000}
+  .histo-item .ph{width:44px;height:44px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center}
+  .histo-item .meta{flex:1;min-width:0}
+  .histo-item .meta b{display:block;font-size:15px}
+  .histo-item .meta small{color:var(--muted);font-size:12.5px}
+  .histo-item .del{background:none;border:none;color:var(--danger);font-size:19px;padding:8px;cursor:pointer}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14.5px}
+  .hidden{display:none!important}
+  #errbox{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.4);color:#ffc9c9;border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ═══════════ ACCUEIL ═══════════ -->
+  <section class="screen active" id="scr-accueil">
+    <h1>🧍 Mensurations Photo</h1>
+    <p class="muted">Estime les mensurations d'une personne à partir d'une photo du corps entier, directement sur ton appareil.</p>
+
+    <div class="card">
+      <h2>Comment ça marche</h2>
+      <p class="muted" style="margin:0">
+        <b style="color:var(--txt)">1.</b> Tu indiques la taille de la personne (elle sert d'étalon, comme une règle).<br>
+        <b style="color:var(--txt)">2.</b> Tu prends une photo du corps entier, de face, bras légèrement écartés.<br>
+        <b style="color:var(--txt)">3.</b> L'IA repère 33 points du corps et l'app calcule chaque mesure.
+      </p>
+    </div>
+
+    <div class="note">
+      ⚠️ <b>Précision réaliste :</b> une photo 2D ne peut pas donner des mesures exactes au millimètre.
+      Attends-toi à ±3–5 cm sur les longueurs et largeurs. Les « tours » (poitrine, taille, hanches) sont des
+      <b>estimations indicatives</b> : vérifie-les au mètre ruban si tu as besoin de précision (couture, uniforme…).
+    </div>
+
+    <div class="note green">
+      🔒 <b>Confidentialité totale :</b> tout se passe dans ton navigateur. Les photos ne sont
+      envoyées sur aucun serveur, rien ne quitte ton appareil.
+    </div>
+
+    <button class="btn primary" id="btn-go">Commencer 📸</button>
+    <button class="btn ghost" id="btn-histo">Historique des mesures</button>
+  </section>
+
+  <!-- ═══════════ INFOS ═══════════ -->
+  <section class="screen" id="scr-infos">
+    <div class="topbar">
+      <button class="back" data-back="scr-accueil">‹</button>
+      <div class="steps"><span class="on"></span><span></span><span></span></div>
+    </div>
+    <div class="card">
+      <h2>La personne à mesurer</h2>
+      <label for="f-nom">Prénom / nom (facultatif)</label>
+      <input type="text" id="f-nom" placeholder="Ex. : Eric, Sarah…">
+      <label for="f-taille">Sa taille debout, sans chaussures (cm) *</label>
+      <input type="number" id="f-taille" inputmode="numeric" placeholder="Ex. : 175" min="100" max="230" required>
+      <p class="muted" style="font-size:13px;margin:6px 0 0">C'est l'étalon de l'app : plus cette valeur est juste, plus les mesures sont fiables.</p>
+      <label for="f-morpho">Morphologie (facultatif, affine les estimations)</label>
+      <select id="f-morpho">
+        <option value="na">Non précisée</option>
+        <option value="H">Masculine</option>
+        <option value="F">Féminine</option>
+      </select>
+    </div>
+    <button class="btn primary" id="btn-to-photo">Suivant : la photo ›</button>
+    <div id="errbox"></div>
+  </section>
+
+  <!-- ═══════════ PHOTO ═══════════ -->
+  <section class="screen" id="scr-photo">
+    <div class="topbar">
+      <button class="back" data-back="scr-infos">‹</button>
+      <div class="steps"><span class="on"></span><span class="on"></span><span></span></div>
+    </div>
+
+    <div class="stage" id="stage">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas class="overlay" id="overlay"></canvas>
+      <div class="guide" id="guide">
+        <svg viewBox="0 0 100 210" fill="none" stroke="#4cc2ff" stroke-width="3" stroke-linecap="round">
+          <circle cx="50" cy="16" r="11" stroke-dasharray="6 5"/>
+          <path d="M50 28 V38 M30 48 L70 48 M50 38 L36 50 M36 50 L28 74 M50 38 L64 50 M64 50 L72 74 M38 48 L40 118 L36 200 M62 48 L60 118 L64 200 M40 118 L60 118" stroke-dasharray="7 6"/>
+        </svg>
+      </div>
+      <div class="status" id="status">Chargement de l'IA…</div>
+    </div>
+
+    <div class="note blue" style="margin-top:12px">
+      📷 <b>Bonne prise de vue :</b> personne bien de face, pieds et tête entiers dans le cadre,
+      bras légèrement écartés du corps, à 2–3 m, à hauteur de sa taille, sur un sol plat.
+    </div>
+
+    <div class="row">
+      <button class="btn green" id="btn-capture" disabled>◯ Prendre la photo</button>
+      <button class="btn ghost" id="btn-flip" title="Changer de caméra">⇄</button>
+    </div>
+    <button class="btn ghost" id="btn-import">🖼️ Utiliser une photo existante</button>
+    <input type="file" id="file-input" accept="image/*" class="hidden">
+    <div id="errbox-photo"></div>
+  </section>
+
+  <!-- ═══════════ RÉSULTAT ═══════════ -->
+  <section class="screen" id="scr-resultat">
+    <div class="topbar">
+      <button class="back" id="res-back">‹</button>
+      <div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span></div>
+    </div>
+    <div class="thumbbox"><canvas id="res-canvas"></canvas></div>
+    <div class="who"><b id="res-nom"></b><span class="muted" id="res-date"></span></div>
+    <p class="muted" id="res-ref" style="margin:0 0 8px"></p>
+    <div id="res-warnings"></div>
+    <div id="res-table"></div>
+    <button class="btn primary" id="btn-copy">📋 Copier la fiche</button>
+    <button class="btn ghost" id="btn-share">📤 Partager</button>
+    <button class="btn ghost" id="btn-new">＋ Nouvelle mesure</button>
+  </section>
+
+  <!-- ═══════════ HISTORIQUE ═══════════ -->
+  <section class="screen" id="scr-histo">
+    <div class="topbar">
+      <button class="back" data-back="scr-accueil">‹</button>
+      <div class="steps"></div>
+    </div>
+    <h2>Historique</h2>
+    <div id="histo-list"></div>
+    <p class="empty" id="histo-empty">Aucune mesure enregistrée pour l'instant.</p>
+    <button class="btn ghost" id="btn-histo-new">＋ Nouvelle mesure</button>
+  </section>
+
+</div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════
+   Mensurations Photo — détection de pose (MediaPipe) + conversion
+   des points du corps en centimètres via la taille connue.
+   Tout est calculé localement, aucune donnée n'est envoyée.
+   ═══════════════════════════════════════════════════════════════ */
+
+import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
+
+const $ = id => document.getElementById(id);
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+const WASM_URL  = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
+
+/* ── Navigation entre écrans ────────────────────────────────── */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.back)));
+
+/* ── État global ────────────────────────────────────────────── */
+const state = {
+  nom:'', tailleCm:0, morpho:'na',
+  landmarker:null, imageLandmarker:null,
+  stream:null, facing:'environment',
+  lastLandmarks:null, lastDims:null,
+  result:null,            // {items direct/est, warnings, thumb, date}
+  returnTo:'scr-accueil', // écran de retour depuis les résultats
+};
+
+/* ── Chargement du modèle IA (une seule fois) ───────────────── */
+async function loadModel(){
+  if(state.landmarker) return;
+  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  try{
+    state.landmarker = await PoseLandmarker.createFromOptions(vision,{
+      baseOptions:{ modelAssetPath:MODEL_URL, delegate:'GPU' },
+      runningMode:'VIDEO', numPoses:1,
+      minPoseDetectionConfidence:.5, minPosePresenceConfidence:.5, minPoseTrackingConfidence:.5,
+    });
+  }catch(e){ // certains appareils n'ont pas de GPU utilisable → CPU
+    state.landmarker = await PoseLandmarker.createFromOptions(vision,{
+      baseOptions:{ modelAssetPath:MODEL_URL, delegate:'CPU' },
+      runningMode:'VIDEO', numPoses:1,
+    });
+  }
+}
+async function getImageLandmarker(){
+  if(state.imageLandmarker) return state.imageLandmarker;
+  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  state.imageLandmarker = await PoseLandmarker.createFromOptions(vision,{
+    baseOptions:{ modelAssetPath:MODEL_URL, delegate:'GPU' },
+    runningMode:'IMAGE', numPoses:1, minPoseDetectionConfidence:.5,
+  });
+  return state.imageLandmarker;
+}
+
+/* ── Écran 1 → 2 ────────────────────────────────────────────── */
+$('btn-go').addEventListener('click',()=>show('scr-infos'));
+$('btn-histo').addEventListener('click',()=>{renderHisto();show('scr-histo');});
+$('btn-histo-new').addEventListener('click',()=>show('scr-infos'));
+
+/* ── Écran 2 : validation ───────────────────────────────────── */
+$('btn-to-photo').addEventListener('click',()=>{
+  const err = $('errbox');
+  const t = parseInt($('f-taille').value,10);
+  if(!t || t<100 || t>230){
+    err.textContent = '⚠️ Indique une taille valide en cm (entre 100 et 230) — c\'est indispensable pour l\'étalonnage.';
+    err.style.display='block';
+    return;
+  }
+  err.style.display='none';
+  state.nom = $('f-nom').value.trim();
+  state.tailleCm = t;
+  state.morpho = $('f-morpho').value;
+  startPhotoScreen();
+});
+
+/* ── Écran 3 : caméra + détection en direct ─────────────────── */
+const video = $('video'), overlay = $('overlay'), octx = overlay.getContext('2d');
+let rafId = null, lastVideoTime = -1, lastResult = null;
+
+async function startPhotoScreen(){
+  show('scr-photo');
+  setStatus('Chargement de l\'IA… (première fois : ~10 Mo)', '');
+  $('btn-capture').disabled = true;
+  try{
+    await loadModel();
+  }catch(e){
+    setStatus('Impossible de charger l\'IA. Vérifie ta connexion internet puis réessaie.', 'bad');
+    return;
+  }
+  await startCamera();
+  loop();
+}
+
+async function startCamera(){
+  stopCamera();
+  try{
+    state.stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode: state.facing, width:{ideal:1280}, height:{ideal:1280} }, audio:false
+    });
+    video.srcObject = state.stream;
+    await video.play();
+    $('stage').classList.toggle('mirror', state.facing==='user');
+  }catch(e){
+    setStatus('Caméra indisponible. Tu peux importer une photo existante ↓', 'bad');
+  }
+}
+function stopCamera(){
+  if(state.stream){ state.stream.getTracks().forEach(t=>t.stop()); state.stream=null; }
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+}
+
+function loop(){
+  rafId = requestAnimationFrame(loop);
+  if(!state.landmarker || video.readyState<2 || !video.videoWidth) return;
+  if(video.currentTime !== lastVideoTime){
+    lastVideoTime = video.currentTime;
+    try{ lastResult = state.landmarker.detectForVideo(video, performance.now()); }catch(e){ return; }
+    drawSkeleton(octx, lastResult, overlay, video);
+    const lm = lastResult.landmarks && lastResult.landmarks[0];
+    if(lm){
+      const missing = missingParts(lm, video.videoWidth, video.videoHeight);
+      $('btn-capture').disabled = false;
+      setStatus(missing.length ? 'Vu ! Mais : '+missing.join(', ')+' — ajuste la pose.' : 'Parfait ! Appuie sur le bouton vert 📷', missing.length?'':'ok');
+    }else{
+      $('btn-capture').disabled = true;
+      setStatus('Personne détectée… place-toi bien de face, corps entier dans le cadre.', 'bad');
+    }
+  }
+}
+
+function setStatus(txt, cls){
+  const s=$('status'); s.textContent=txt; s.className='status '+(cls||'');
+}
+
+/* Parties du corps requises, avec nom lisible */
+const REQUIRED = [
+  [11,'épaule gauche'],[12,'épaule droite'],
+  [13,'coude gauche'],[14,'coude droit'],
+  [15,'poignet gauche'],[16,'poignet droit'],
+  [23,'hanche gauche'],[24,'hanche droite'],
+  [25,'genou gauche'],[26,'genou droit'],
+  [27,'cheville gauche'],[28,'cheville droite'],
+];
+function missingParts(lm, w, h){
+  // si le modèle ne fournit pas de visibilité, on ne peut pas filtrer finement
+  const withV = lm.some(p=>p.visibility!==undefined && p.visibility>0);
+  if(!withV) return [];
+  const miss=[];
+  for(const [i,name] of REQUIRED) if(!(lm[i].visibility>0.4)) miss.push(name);
+  return miss;
+}
+
+/* ── Dessin du squelette ────────────────────────────────────── */
+const CONNECTIONS = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],
+  [11,23],[12,24],[23,24],
+  [23,25],[25,27],[24,26],[26,28],
+  [27,31],[28,32],[15,17],[16,18]
+];
+function drawSkeleton(ctx, result, canvas, media){
+  const w = media.videoWidth || media.naturalWidth || media.width;
+  const h = media.videoHeight || media.naturalHeight || media.height;
+  if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h; }
+  ctx.clearRect(0,0,w,h);
+  const lm = result.landmarks && result.landmarks[0];
+  if(!lm) return;
+  ctx.lineWidth = Math.max(2, w/300);
+  ctx.strokeStyle = 'rgba(53,208,127,.9)';
+  ctx.beginPath();
+  for(const [a,b] of CONNECTIONS){
+    ctx.moveTo(lm[a].x*w, lm[a].y*h);
+    ctx.lineTo(lm[b].x*w, lm[b].y*h);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#4cc2ff';
+  for(const p of lm){
+    ctx.beginPath();
+    ctx.arc(p.x*w, p.y*h, Math.max(3, w/220), 0, 7);
+    ctx.fill();
+  }
+}
+
+/* ── Capture / import ───────────────────────────────────────── */
+$('btn-capture').addEventListener('click',()=>{
+  if(!lastResult || !lastResult.landmarks || !lastResult.landmarks[0]) return;
+  stopCamera();
+  processResult(lastResult.landmarks[0], video.videoWidth, video.videoHeight, video);
+});
+$('btn-flip').addEventListener('click', async ()=>{
+  state.facing = state.facing==='user' ? 'environment' : 'user';
+  await startCamera();
+});
+$('btn-import').addEventListener('click',()=>$('file-input').click());
+$('file-input').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(f) importImage(f);
+  e.target.value='';
+});
+async function importImage(fileOrUrl){
+  setStatus('Analyse de la photo…','');
+  try{
+    stopCamera();
+    const img = new Image();
+    img.src = typeof fileOrUrl==='string' ? fileOrUrl : URL.createObjectURL(fileOrUrl);
+    await img.decode();
+    const lmk = await getImageLandmarker();
+    const res = lmk.detect(img);
+    if(!res.landmarks || !res.landmarks[0]){
+      show('scr-photo');
+      setStatus('Aucune personne détectée sur cette photo. Essaie une photo du corps entier, de face.', 'bad');
+      return;
+    }
+    processResult(res.landmarks[0], img.naturalWidth, img.naturalHeight, img);
+  }catch(err){
+    show('scr-photo');
+    setStatus('Impossible d\'analyser cette image.', 'bad');
+  }
+}
+
+/* ── Calcul des mensurations ────────────────────────────────── */
+/* Ratios anthropométriques (fraction de la taille debout) :
+   épaules ~0,82 · hanches(articulation) ~0,53 · entrejambe ~0,48
+   genou ~0,285 · malléole (cheville) ~0,058 · talon ~0,015      */
+function computeMeasures(lm, w, h, tailleCm, morpho){
+  const pt = i => ({ x: lm[i].x*w, y: lm[i].y*h });
+  const mid = (a,b) => ({ x:(a.x+b.x)/2, y:(a.y+b.y)/2 });
+  const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+  const warnings = [];
+
+  const LS=pt(11), RS=pt(12), LH=pt(23), RH=pt(24),
+        LE=pt(13), RE=pt(14), LW=pt(15), RW=pt(16),
+        LK=pt(25), RK=pt(26), LA=pt(27), RA=pt(28),
+        LHl=pt(31), RHl=pt(32);
+  const shMid = mid(LS,RS), hipMid = mid(LH,RH), ankMid = mid(LA,RA), heelMid = mid(LHl,RHl);
+
+  const heelsVisible = (lm[31].visibility===undefined || lm[31].visibility>0.4) &&
+                       (lm[32].visibility===undefined || lm[32].visibility>0.4);
+
+  // taille debout en pixels, déduite de épaules→pieds (l'axe y va vers le bas)
+  const ratio = heelsVisible ? (0.818-0.015) : (0.818-0.058);
+  const refY2 = heelsVisible ? heelMid.y : ankMid.y;
+  const staturePx = (refY2 - shMid.y) / ratio;
+  const scale = tailleCm / staturePx;   // cm par pixel
+  const floorY = heelsVisible ? heelMid.y : ankMid.y + 0.058*staturePx;
+
+  // garde-fous
+  const shTilt = Math.abs(Math.atan2(RS.y-LS.y, RS.x-LS.x) * 180/Math.PI);
+  if(shTilt>12) warnings.push('La personne semble penchée ou de biais — les mesures de largeur seront sous-estimées.');
+  const shoulderWpx = dist(LS,RS);
+  if(shoulderWpx/staturePx < 0.16 || shoulderWpx/staturePx > 0.32)
+    warnings.push('La largeur d\'épaules semble anormale : la personne est peut-être tournée ou trop proche de l\'objectif.');
+  if(staturePx < h*0.4)
+    warnings.push('La personne occupe peu de l\'image — recule et zoome sur le corps entier pour plus de précision.');
+
+  const r1 = v => Math.round(v);
+
+  // ── Mesures directes (issues des points détectés) ──
+  // Les points IA marquent les articulations : on convertit vers les largeurs
+  // « hors tout » usuelles (deltoïdes, trochanters) par des facteurs moyens.
+  const shoulderW = dist(LS,RS)*1.15*scale;   // articulations → hors deltoïdes
+  const armL = (dist(LS,LE)+dist(LE,LW))*scale;
+  const armR = (dist(RS,RE)+dist(RE,RW))*scale;
+  const torso = dist(shMid,hipMid)*scale;
+  const hipW  = dist(LH,RH)*1.80*scale;       // têtes fémorales → hors trochanters
+  const thighL = dist(LH,LK)*scale, thighR = dist(RH,RK)*scale;
+  const shinL = dist(LK,LA)*scale, shinR = dist(RK,RA)*scale;
+  const crotchY = hipMid.y + 0.05*staturePx;          // entrejambe ≈ 0,48 de la taille
+  const inseam = (floorY - crotchY)*scale;
+
+  const direct = [
+    ['Largeur d\'épaules (hors deltoïdes)', r1(shoulderW)],
+    ['Longueur du torse (épaule → hanche)', r1(torso)],
+    ['Largeur de hanches (hors trochanters)', r1(hipW)],
+    ['Bras gauche (épaule → poignet)', r1(armL)],
+    ['Bras droit (épaule → poignet)', r1(armR)],
+    ['Cuisse gauche (hanche → genou)', r1(thighL)],
+    ['Cuisse droite (hanche → genou)', r1(thighR)],
+    ['Jambe gauche (hanche → cheville)', r1(thighL+shinL)],
+    ['Jambe droite (hanche → cheville)', r1(thighR+shinR)],
+    ['Entrejambe (sol → fourche)', r1(inseam), true],
+  ];
+
+  // ── Circonférences : estimées à partir des largeurs vues de face ──
+  // déduites des écarts d'articulations détectés (cm), ajustées morphologie
+  const dSh = dist(LS,RS)*scale, dHp = dist(LH,RH)*scale;
+  const K = {
+    H:{chest:2.85, waist:4.90, hip:5.30},
+    F:{chest:2.90, waist:4.20, hip:5.40},
+    na:{chest:2.87, waist:4.55, hip:5.35},
+  }[morpho||'na'];
+  const estim = [
+    ['Tour de poitrine', r1(dSh*K.chest)],
+    ['Tour de taille', r1(dHp*K.waist)],
+    ['Tour de hanches', r1(dHp*K.hip)],
+  ];
+
+  return { direct, estim, warnings };
+}
+
+/* ── Écran 4 : affichage des résultats ──────────────────────── */
+function processResult(lm, w, h, source){
+  const { direct, estim, warnings } = computeMeasures(lm, w, h, state.tailleCm, state.morpho);
+
+  // photo + squelette
+  const rc = $('res-canvas'), rctx = rc.getContext('2d');
+  const maxW = 1200, k = Math.min(1, maxW/w);
+  rc.width = w*k; rc.height = h*k;
+  rctx.drawImage(source, 0,0, rc.width, rc.height);
+  const scaled = lm.map(p=>({x:p.x, y:p.y, visibility:p.visibility}));
+  drawSkeleton(rctx, {landmarks:[scaled]}, rc, rc);
+
+  // miniature pour l'historique
+  const tc = document.createElement('canvas');
+  const tk = Math.min(1, 220/rc.width);
+  tc.width = rc.width*tk; tc.height = rc.height*tk;
+  tc.getContext('2d').drawImage(rc,0,0,tc.width,tc.height);
+  const thumb = tc.toDataURL('image/jpeg',.6);
+
+  state.result = { direct, estim, warnings, thumb, date:new Date() };
+  renderResult();
+}
+function renderResult(){
+  if(!state.noSave) pushHisto();
+  const r = state.result;
+  $('res-nom').textContent = state.nom || 'Sans nom';
+  $('res-date').textContent = r.date.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+
+                              ' · '+r.date.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  $('res-ref').textContent = 'Taille de référence : '+state.tailleCm+' cm · Morphologie : '+({H:'masculine',F:'féminine',na:'non précisée'}[state.morpho]);
+
+  $('res-warnings').innerHTML = r.warnings.length
+    ? '<div class="note">'+r.warnings.map(w=>'⚠️ '+w).join('<br>')+'</div>' : '';
+
+  let html = '<div class="sectitle">Mesures directes · ±3–5 cm</div>';
+  html += '<table class="meas-table">';
+  for(const [label,val,isEst] of r.direct){
+    html += `<tr class="${isEst?'est':''}"><td>${label}${isEst?'<span class="badge est">estimé</span>':''}</td><td>${val} cm</td></tr>`;
+  }
+  html += '</table>';
+  html += '<div class="sectitle">Tours · estimations indicatives ⚠️</div>';
+  html += '<table class="meas-table">';
+  for(const [label,val] of r.estim){
+    html += `<tr class="est"><td>${label}<span class="badge est">≈</span></td><td>≈ ${val} cm</td></tr>`;
+  }
+  html += '</table>';
+  html += '<p class="muted" style="font-size:12.5px">Les « tours » ne sont pas mesurables sur une photo de face (il faudrait la profondeur) : ils sont déduits des largeurs par des proportions moyennes. À vérifier au mètre ruban.</p>';
+  $('res-table').innerHTML = html;
+
+  show('scr-resultat');
+}
+
+$('res-back').addEventListener('click',()=>{
+  if(state.returnTo==='scr-histo'){ renderHisto(); show('scr-histo'); }
+  else show('scr-photo') || startPhotoScreen();
+});
+$('btn-new').addEventListener('click',()=>{ state.returnTo='scr-accueil'; show('scr-infos'); });
+
+/* ── Copier / partager ──────────────────────────────────────── */
+function ficheText(){
+  const r = state.result;
+  const lines = [];
+  lines.push('🧍 FICHE MENSURATIONS');
+  lines.push('Nom : '+(state.nom||'—'));
+  lines.push('Date : '+r.date.toLocaleDateString('fr-FR')+' '+r.date.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
+  lines.push('Taille de référence : '+state.tailleCm+' cm');
+  lines.push('');
+  lines.push('— MESURES DIRECTES (±3–5 cm) —');
+  for(const [l,v,e] of r.direct) lines.push(l+' : '+v+' cm'+(e?' (estimé)':''));
+  lines.push('');
+  lines.push('— TOURS (estimations indicatives) —');
+  for(const [l,v] of r.estim) lines.push(l+' : ≈'+v+' cm');
+  lines.push('');
+  lines.push('⚠ Mesures estimées par photo — usage non médical.');
+  return lines.join('\n');
+}
+$('btn-copy').addEventListener('click', async ()=>{
+  const txt = ficheText();
+  try{
+    await navigator.clipboard.writeText(txt);
+    $('btn-copy').textContent='✓ Fiche copiée !';
+  }catch(e){
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove();
+    $('btn-copy').textContent='✓ Fiche copiée !';
+  }
+  setTimeout(()=>$('btn-copy').textContent='📋 Copier la fiche',2000);
+});
+$('btn-share').addEventListener('click', async ()=>{
+  const txt = ficheText();
+  if(navigator.share){
+    try{ await navigator.share({title:'Fiche mensurations', text:txt}); }catch(e){}
+  }else{
+    $('btn-share').textContent='Partage non disponible — fiche copiée';
+    try{ await navigator.clipboard.writeText(txt); }catch(e){}
+    setTimeout(()=>$('btn-share').textContent='📤 Partager',2000);
+  }
+});
+
+/* ── Historique (stockage local) ────────────────────────────── */
+const HKEY = 'mensu_histo_v1';
+function getHisto(){ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return []; } }
+function saveHisto(list){ localStorage.setItem(HKEY, JSON.stringify(list.slice(0,50))); }
+function pushHisto(){
+  const r = state.result;
+  const list = getHisto();
+  list.unshift({
+    id: Date.now(), nom: state.nom, taille: state.tailleCm, morpho: state.morpho,
+    date: r.date.toISOString(), direct: r.direct, estim: r.estim, warnings: r.warnings, thumb: r.thumb,
+  });
+  saveHisto(list);
+}
+function renderHisto(){
+  const list = getHisto();
+  $('histo-empty').style.display = list.length? 'none':'block';
+  $('histo-list').innerHTML = list.map(it=>`
+    <div class="histo-item" data-id="${it.id}">
+      ${it.thumb?`<img src="${it.thumb}" alt="">`:'<div class="ph">🧍</div>'}
+      <div class="meta"><b>${it.nom||'Sans nom'}</b><small>${new Date(it.date).toLocaleDateString('fr-FR')} · épaules ${it.direct[0][1]} cm · poitrine ≈${it.estim[0][1]} cm</small></div>
+      <button class="del" data-del="${it.id}" title="Supprimer">✕</button>
+    </div>`).join('');
+  document.querySelectorAll('.histo-item').forEach(el=>el.addEventListener('click',e=>{
+    if(e.target.dataset.del) return;
+    openHistoItem(parseInt(el.dataset.id,10));
+  }));
+  document.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',e=>{
+    saveHisto(getHisto().filter(x=>x.id!==parseInt(b.dataset.del,10)));
+    renderHisto();
+  }));
+}
+function openHistoItem(id){
+  const it = getHisto().find(x=>x.id===id);
+  if(!it) return;
+  state.nom=it.nom; state.tailleCm=it.taille; state.morpho=it.morpho;
+  state.result={ direct:it.direct, estim:it.estim, warnings:it.warnings||[], thumb:it.thumb, date:new Date(it.date) };
+  // ré-affiche la miniature stockée
+  const rc=$('res-canvas');
+  if(it.thumb){
+    const im=new Image(); im.onload=()=>{ rc.width=im.width; rc.height=im.height; rc.getContext('2d').drawImage(im,0,0); };
+    im.src=it.thumb;
+  }
+  state.returnTo='scr-histo';
+  state.noSave = true;      // consultation d'une fiche existante → pas de doublon
+  renderResult();
+  state.noSave = false;
+}
+
+/* ── Mode application installable (hors ligne après 1er lancement) ── */
+if('serviceWorker' in navigator && window.isSecureContext){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+/* ── Mode test interne : ?test=1 analyse test-image.jpg ─────── */
+if(new URLSearchParams(location.search).get('test')==='1'){
+  $('f-nom').value='Test';
+  $('f-taille').value='175';
+  $('btn-go').click();
+  $('btn-to-photo').click();
+  setTimeout(()=>importImage('test-image.jpg'), 400);
+}
+</script>
+</body>
+</html>
