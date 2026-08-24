@@ -1,5 +1,7 @@
 # 🧍 Mensurations Photo
 
+**Adresse de l'application :** https://ericetje4-cloud.github.io/mensurations-photo/
+
 Petite application web qui estime les mensurations d'une personne à partir d'une
 photo du corps entier, prise à l'appareil photo ou importée depuis la photothèque.
 
