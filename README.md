@@ -25,22 +25,19 @@ convertir les pixels en centimètres. Plus elle est juste, mieux c'est.
 Pour des mesures de couture précises, garde un mètre ruban : l'app est faite
 pour gagner du temps et fournir des ordres de grandeur fiables.
 
-## 📱 Utiliser sur l'iPhone / Android
+## 📱 Installer sur téléphone (Android / iPhone)
 
-La caméra d'un navigateur ne fonctionne qu'en HTTPS. Deux options :
-
-1. **En ligne (recommandé)** : héberger gratuitement ce dossier sur
-   Netlify Drop (app.netlify.com/drop → glisser-déposer le dossier),
-   GitHub Pages, ou Vercel. Ouvrir l'URL obtenue sur le téléphone,
-   puis « Ajouter à l'écran d'accueil » pour l'avoir comme une app.
-2. **Réseau local** : sur le même Wi-Fi que le Mac, ouvrir
-   `http://IP-DU-MAC:8123` — seule l'importation de photo fonctionnera
-   (la caméra en direct est bloquée hors HTTPS).
+1. Ouvrir **https://ericetje4-cloud.github.io/mensurations-photo/** dans Chrome (Android)
+   ou Safari (iPhone).
+2. Menu du navigateur → **« Installer l'application »** (Android) ou
+   **Partager → « Sur l'écran d'accueil »** (iPhone).
+3. L'icône apparaît comme une vraie app ; elle fonctionne hors ligne après
+   le premier lancement.
 
 ## 💻 Tester sur le Mac
 
 ```bash
-cd "Documents/Stunt Business/mensurations-photo"
+cd "Documents/Mensurations Photo/mensurations-photo"
 python3 -m http.server 8123
 ```
 
